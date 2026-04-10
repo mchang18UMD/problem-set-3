@@ -40,6 +40,38 @@ def calculate_metrics(model_pred_df, genre_list, genre_true_counts, genre_tp_cou
 
     # Your code here
 
+    macro_precision = []
+    macro_recall = []
+    macro_F1_score = []
+
+    total_tp = 0
+    total_fp = 0
+    total_fn = 0
+
+    for genre in genre_list:
+        tp = genre_tp_counts.get(genre,0)
+        fp = genre_fp_counts.get(genre,0)
+        fn = genre_true_counts.get(genre,0) - tp
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp +fn) > 0 else 0
+        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+        macro_precision.append(precision)
+        macro_recall.append(recall)
+        macro_F1_score.append(f1)
+
+        total_tp += tp
+        total_fp += fp
+        total_fn += fn
+
+    micro_precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0
+    micro_recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0
+    micro_F1_score = 2 * (micro_precision * micro_recall) / (micro_precision + micro_recall) if (micro_precision + micro_recall) > 0 else 0
+
+    return micro_precision, micro_recall, micro_F1_score, macro_precision,macro_F1_score, macro_recall
+
+
     
 def calculate_sklearn_metrics(model_pred_df, genre_list):
     '''
@@ -62,3 +94,26 @@ def calculate_sklearn_metrics(model_pred_df, genre_list):
     '''
 
     # Your code here
+
+    import ast
+
+    pred_rows = []
+    true_rows = []
+
+    for _, row in model_pred_df.iterrows():
+        predicted_genre = row['predicted']
+        actual_genre = set(ast.literal_eval(row['actual genres']))
+
+        pred_row = [1 if genre == predicted_genre else 0 for genre in genre_list]
+        true_row = [1 if genre in actual_genre else 0 for genre in genre_list]
+
+        pred_rows.append(pred_row)
+        true_rows.append(true_row)
+
+    pred_matrix = pd.DataFrame(pred_rows, columns=genre_list)
+    true_matrix = pd.DataFrame(true_rows, columns=genre_list)
+
+    macro_precision, macro_recall, macro_F1_score, _ = precision_recall_fscore_support(true_matrix, pred_matrix, average= 'macro',zero_division=0)
+    micro_precision, micro_recall, micro_F1_score, _ = precision_recall_fscore_support(true_matrix, pred_matrix, average= 'micro',zero_division=0)
+
+    return macro_precision, macro_recall, macro_F1_score, micro_precision, micro_recall, micro_F1_score
